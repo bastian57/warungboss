@@ -134,7 +134,6 @@ fun LoginScreen(onLogin: (String) -> Unit) {
                 else -> error = "PIN salah. Coba 1234 (Owner) / 1111 (Kasir) / 9999 (Darurat)."
             }
         }, modifier = Modifier.fillMaxWidth().height(56.dp), colors = ButtonDefaults.buttonColors(containerColor = Bata)) { Text("Masuk", fontSize = 17.sp) }
-        Text("PIN default: Owner 1234 • Kasir 1111 • Darurat 9999
-apk by DAFTECH", fontSize = 12.sp, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+        Text("PIN default: Owner 1234 • Kasir 1111 • Darurat 9999\napk by DAFTECH", fontSize = 12.sp, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
     }
 }
