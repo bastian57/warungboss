@@ -14,7 +14,6 @@ import com.daftech.warungboss.util.todayStart
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 data class CartLine(val menu: MenuItemEntity, var qty: Int, val note: String = "")
@@ -48,15 +47,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch {
-            combine(db.menuDao().all(), db.orderDao().all(), db.stockDao().all(), db.staffDao().all()) { m, o, s, st ->
-                Quad(m, o, s, st)
-            }.collect { q ->
-                menu.value = q.a; orders.value = q.b; stock.value = q.c; staff.value = q.d
-                if (q.a.isEmpty() && db.menuDao().count() == 0) seed()
+            db.menuDao().all().collect { list ->
+                menu.value = list
+                if (list.isEmpty() && db.menuDao().count() == 0) seed()
             }
         }
+        viewModelScope.launch { db.orderDao().all().collect { orders.value = it } }
+        viewModelScope.launch { db.stockDao().all().collect { stock.value = it } }
+        viewModelScope.launch { db.staffDao().all().collect { staff.value = it } }
     }
-    private data class Quad<A,B,C,D>(val a: A, val b: B, val c: C, val d: D)
 
     private suspend fun seed() {
         DefaultData.menu().forEach { db.menuDao().insert(it) }
