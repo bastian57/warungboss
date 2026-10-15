@@ -70,8 +70,8 @@ jobs:
           set -e
           gradle assembleRelease 2>&1 | tee build.log
           ls -lh app/build/outputs/apk/release/
-          cp app/build/outputs/apk/release/app-release.apk WarungBoss-v1.0.0.apk
-          ls -lh WarungBoss-v1.0.0.apk build.log
+          cp app/build/outputs/apk/release/app-release.apk WarungBoss-v1.1.0.apk
+          ls -lh WarungBoss-v1.1.0.apk build.log
 
       - name: Upload APK + build.log ke rolling latest release
         env:
@@ -79,7 +79,7 @@ jobs:
         run: |
           set -e
           gh release view latest > /dev/null 2>&1 || gh release create latest --title "latest" --notes "Rolling latest build - WarungBoss"
-          gh release upload latest WarungBoss-v1.0.0.apk --clobber
+          gh release upload latest WarungBoss-v1.1.0.apk --clobber
           gh release view build-log > /dev/null 2>&1 || gh release create build-log --title "build-log" --notes "Build logs - WarungBoss"
           gh release upload build-log build.log --clobber
           echo "UPLOAD OK"
