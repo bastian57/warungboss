@@ -1,7 +1,13 @@
 package com.daftech.warungboss.ui
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,8 +40,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.daftech.warungboss.data.MenuItemEntity
 import com.daftech.warungboss.data.StockItemEntity
 import com.daftech.warungboss.data.StaffEntity
@@ -53,23 +61,26 @@ fun MenuManageScreen(vm: MainViewModel) {
     val menu by vm.menu.collectAsState()
     var editing by remember { mutableStateOf<MenuItemEntity?>(null) }
     var isNew by remember { mutableStateOf(false) }
-    Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         SectionTitle("Kelola Menu", "Tambah / edit / on-off tampil. Preview live di form.")
-        Button(onClick = { editing = MenuItemEntity(name = "", category = "Bakso", price = 0, stock = 99, emoji = "🍲"); isNew = true }, colors = ButtonDefaults.buttonColors(containerColor = Bata), modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("+ Tambah Menu") }
+        Text("Template awal Bakso & Mie Ayam — sesuaikan dengan menu warungmu.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+        Button(onClick = { editing = MenuItemEntity(name = "", category = "", price = 0, stock = 99, emoji = "🍲"); isNew = true }, colors = ButtonDefaults.buttonColors(containerColor = Bata), modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("+ Tambah Menu") }
         Spacer(Modifier.height(10.dp))
+        if (menu.isEmpty()) EmptyState("🍲", "Belum ada menu", "Tap + Tambah Menu di atas untuk mulai.")
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(menu) { m ->
                 PremiumCard {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text("${m.emoji}  ${m.name}", fontWeight = FontWeight.Bold)
-                            Text("${m.category} • ${formatRupiah(m.price)} • Stok ${m.stock}", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
+                            Text("${m.category} • ${formatRupiah(m.price)} • Stok ${m.stock}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                         }
                         Switch(checked = m.visible, onCheckedChange = { vm.saveMenu(m.copy(visible = it), false) })
                     }
+                    Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { editing = m; isNew = false }) { Text("Edit") }
-                        Button(onClick = { vm.deleteMenu(m.id) }, colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray)) { Text("Hapus", color = Color.Black) }
+                        OutlinedButton(onClick = { editing = m; isNew = false }) { Text("Edit") }
+                        OutlinedButton(onClick = { vm.deleteMenu(m.id) }) { Text("Hapus") }
                     }
                 }
             }
@@ -85,7 +96,7 @@ fun MenuManageScreen(vm: MainViewModel) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 PremiumCard { Text("Preview: $emoji  ${if (name.isBlank()) "Nama Menu" else name}"); Text(formatRupiah(price.toIntOrNull() ?: 0), fontWeight = FontWeight.ExtraBold, color = Bata) }
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nama") }, singleLine = true)
-                OutlinedTextField(value = cat, onValueChange = { cat = it }, label = { Text("Kategori (Bakso/Mie Ayam/Minuman/Tambahan)") }, singleLine = true)
+                OutlinedTextField(value = cat, onValueChange = { cat = it }, label = { Text("Kategori (misal: Makanan/Minuman/Tambahan)") }, singleLine = true)
                 OutlinedTextField(value = price, onValueChange = { price = it.filter { c -> c.isDigit() } }, label = { Text("Harga") }, singleLine = true)
                 OutlinedTextField(value = stockS, onValueChange = { stockS = it.filter { c -> c.isDigit() } }, label = { Text("Stok") }, singleLine = true)
                 OutlinedTextField(value = emoji, onValueChange = { emoji = it }, label = { Text("Emoji (🍲🍜🧋...)") }, singleLine = true)
@@ -104,10 +115,11 @@ fun StockScreen(vm: MainViewModel) {
     val stock by vm.stock.collectAsState()
     var editing by remember { mutableStateOf<StockItemEntity?>(null) }
     var isNew by remember { mutableStateOf(false) }
-    Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         SectionTitle("Stok Harian", "Per porsi. Merah = segera habis.")
-        Button(onClick = { editing = StockItemEntity(name = "", unit = "porsi", quantity = 0, minQty = 10); isNew = true }, colors = ButtonDefaults.buttonColors(containerColor = Bata), modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("+ Tambah Bahan") }
+        Button(onClick = { editing = StockItemEntity(name = "", unit = "porsi", quantity = 0, minQty = 10); isNew = true }, colors = ButtonDefaults.buttonColors(containerColor = Bata), modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("+ Tambah Bahan") }
         Spacer(Modifier.height(10.dp))
+        if (stock.isEmpty()) EmptyState("📦", "Belum ada data stok", "Tap + Tambah Bahan di atas untuk mulai.")
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(stock) { s ->
                 val low = s.quantity <= s.minQty
@@ -116,12 +128,13 @@ fun StockScreen(vm: MainViewModel) {
                         Text(s.name, fontWeight = FontWeight.Bold)
                         Text("${s.quantity} ${s.unit}", fontWeight = FontWeight.ExtraBold, color = if (low) Bata else Hijau)
                     }
-                    Text(if (low) "⚠️ Segera habis (min ${s.minQty})" else "Aman (min ${s.minQty})", fontSize = 12.sp)
+                    Text(if (low) "⚠️ Segera habis (min ${s.minQty})" else "Aman (min ${s.minQty})", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { vm.saveStock(s.copy(quantity = (s.quantity - 1).coerceAtLeast(0)), false) }) { Text("−") }
-                        Button(onClick = { vm.saveStock(s.copy(quantity = s.quantity + 1), false) }) { Text("+") }
-                        Button(onClick = { editing = s; isNew = false }) { Text("Edit") }
-                        Button(onClick = { vm.deleteStock(s.id) }, colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray)) { Text("Hapus", color = Color.Black) }
+                        OutlinedButton(onClick = { vm.saveStock(s.copy(quantity = (s.quantity - 1).coerceAtLeast(0)), false) }) { Text("−") }
+                        OutlinedButton(onClick = { vm.saveStock(s.copy(quantity = s.quantity + 1), false) }) { Text("+") }
+                        OutlinedButton(onClick = { editing = s; isNew = false }) { Text("Edit") }
+                        OutlinedButton(onClick = { vm.deleteStock(s.id) }) { Text("Hapus") }
                     }
                 }
             }
@@ -184,6 +197,29 @@ fun SettingsScreen(vm: MainViewModel, dark: Boolean, onDark: (Boolean) -> Unit, 
     var addr by remember { mutableStateOf(vm.shopAddress) }
     var rek by remember { mutableStateOf(vm.shopRek) }
     var printer by remember { mutableStateOf(vm.printerName) }
+    var showBtDialog by remember { mutableStateOf(false) }
+    var btDevices by remember { mutableStateOf(listOf<PrinterHelper.BtDevice>()) }
+    val btPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            btDevices = PrinterHelper.bondedDevices(ctx)
+            showBtDialog = true
+        } else {
+            Toast.makeText(ctx, "Izin Bluetooth ditolak — tidak bisa memindai.", Toast.LENGTH_SHORT).show()
+        }
+    }
+    fun startScan() {
+        if (Build.VERSION.SDK_INT >= 31) {
+            if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                btDevices = PrinterHelper.bondedDevices(ctx)
+                showBtDialog = true
+            } else {
+                btPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+            }
+        } else {
+            btDevices = PrinterHelper.bondedDevices(ctx)
+            showBtDialog = true
+        }
+    }
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionTitle("Pengaturan", "Profil toko, karyawan, printer, backup")
         PremiumCard {
@@ -191,15 +227,28 @@ fun SettingsScreen(vm: MainViewModel, dark: Boolean, onDark: (Boolean) -> Unit, 
             OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nama warung") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             OutlinedTextField(value = addr, onValueChange = { addr = it }, label = { Text("Alamat") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             OutlinedTextField(value = rek, onValueChange = { rek = it }, label = { Text("No. rekening transfer") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            Button(onClick = { vm.shopName = name; vm.shopAddress = addr; vm.shopRek = rek; Toast.makeText(ctx, "Profil disimpan", Toast.LENGTH_SHORT).show() }, colors = ButtonDefaults.buttonColors(containerColor = Bata)) { Text("Simpan Profil") }
+            Button(onClick = { vm.shopName = name; vm.shopAddress = addr; vm.shopRek = rek; Toast.makeText(ctx, "Profil disimpan", Toast.LENGTH_SHORT).show() }, modifier = Modifier.fillMaxWidth().height(56.dp), colors = ButtonDefaults.buttonColors(containerColor = Bata)) { Text("Simpan Profil", fontSize = 16.sp) }
         }
         PremiumCard {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Mode Gelap (semua layer)", fontWeight = FontWeight.Bold)
                 Switch(checked = dark, onCheckedChange = onDark)
             }
-            OutlinedTextField(value = printer, onValueChange = { printer = it }, label = { Text("Printer Bluetooth 58mm") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            Button(onClick = { vm.printerName = printer; Toast.makeText(ctx, "Printer disimpan: $printer", Toast.LENGTH_SHORT).show() }) { Text("Simpan Printer") }
+            Spacer(Modifier.height(8.dp))
+            Text("Printer Bluetooth 58mm", fontWeight = FontWeight.Bold)
+            Text("Pair-kan printer dulu di Pengaturan Bluetooth HP, lalu tekan Pindai.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+            OutlinedTextField(value = printer, onValueChange = {}, label = { Text("Printer terpilih") }, modifier = Modifier.fillMaxWidth(), singleLine = true, readOnly = true)
+            Button(onClick = { startScan() }, modifier = Modifier.fillMaxWidth().height(56.dp), colors = ButtonDefaults.buttonColors(containerColor = Bata)) { Text("Pindai Bluetooth", fontSize = 16.sp) }
+            OutlinedButton(onClick = {
+                val mac = vm.printerMac
+                if (mac.isBlank()) {
+                    Toast.makeText(ctx, "Pilih printer dulu lewat Pindai Bluetooth", Toast.LENGTH_SHORT).show()
+                } else {
+                    PrinterHelper.sendBytes(ctx, mac, PrinterHelper.buildTestEscPos()) { ok, msg ->
+                        Toast.makeText(ctx, msg, if (ok) Toast.LENGTH_SHORT else Toast.LENGTH_LONG).show()
+                    }
+                }
+            }, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("Tes Cetak", fontSize = 16.sp) }
         }
         PremiumCard {
             Text("Karyawan", fontWeight = FontWeight.Bold)
@@ -215,18 +264,46 @@ fun SettingsScreen(vm: MainViewModel, dark: Boolean, onDark: (Boolean) -> Unit, 
                     val f = BackupHelper.exportJson(ctx, json)
                     Toast.makeText(ctx, "Backup tersimpan: ${f.name}", Toast.LENGTH_LONG).show()
                 }) { Text("Backup") }
-                Button(onClick = {
+                OutlinedButton(onClick = {
                     Toast.makeText(ctx, "Restore: pilih file backup JSON dari file manager, lalu import di versi berikutnya / hubungi DAFTECH.", Toast.LENGTH_LONG).show()
-                }, colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray)) { Text("Restore", color = Color.Black) }
+                }) { Text("Restore") }
             }
         }
         PremiumCard {
             Text("Tentang", fontWeight = FontWeight.Bold)
-            Text("WarungBoss v1.0.0 • Offline 100% • Tanpa internet, tanpa iklan")
+            Text("WarungBoss v1.1.0 • Offline 100% • Tanpa internet, tanpa iklan")
             Text("Lisensi: Rp1.000.000 / device (device-bound)")
             Text("apk by DAFTECH", fontWeight = FontWeight.Bold)
         }
-        Button(onClick = onLogout, modifier = Modifier.fillMaxWidth().height(52.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray)) { Text("Keluar (Ganti PIN / User)", color = Color.Black) }
+        OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("Keluar (Ganti PIN / User)") }
+    }
+    if (showBtDialog) {
+        AlertDialog(
+            onDismissRequest = { showBtDialog = false },
+            title = { Text("Pilih Printer") },
+            text = {
+                Column {
+                    if (btDevices.isEmpty()) {
+                        Text("Tidak ada perangkat ter-pairing.\nPair-kan printer di Pengaturan Bluetooth HP dulu.", fontSize = 13.sp)
+                    } else {
+                        btDevices.forEach { d ->
+                            TextButton(
+                                onClick = {
+                                    val label = "${d.name} (${d.address})"
+                                    vm.printerName = label
+                                    vm.printerMac = d.address
+                                    printer = label
+                                    showBtDialog = false
+                                    Toast.makeText(ctx, "Printer dipilih: ${d.name}", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("${d.name}\n${d.address}", textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth()) }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showBtDialog = false }) { Text("Tutup") } }
+        )
     }
 }
 

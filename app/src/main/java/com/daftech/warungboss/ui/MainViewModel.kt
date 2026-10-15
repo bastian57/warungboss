@@ -44,6 +44,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         set(v) { shopPrefs.edit().putString("shop_rek", v).apply() }
     var printerName: String get() = shopPrefs.getString("printer_name", "Belum dipilih") ?: "Belum dipilih"
         set(v) { shopPrefs.edit().putString("printer_name", v).apply() }
+    var printerMac: String get() = shopPrefs.getString("printer_mac", "") ?: ""
+        set(v) { shopPrefs.edit().putString("printer_mac", v).apply() }
 
     init {
         viewModelScope.launch {

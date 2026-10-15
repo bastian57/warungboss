@@ -52,7 +52,7 @@ fun SplashScreen(onDone: () -> Unit) {
             }
             Spacer(Modifier.height(16.dp))
             Text("WarungBoss", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
-            Text("Kasir Warung Bakso & Mie Ayam", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
+            Text("Kasir Warung Serbaguna", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
             Spacer(Modifier.height(8.dp))
             Text("Ketuk layar untuk masuk  •  apk by DAFTECH", fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f))
         }
@@ -64,10 +64,10 @@ fun ActivationScreen(deviceId: String, onActivated: (String) -> Unit) {
     val ctx = LocalContext.current
     var code by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("🍲", fontSize = 48.sp)
         Text("Aktivasi WarungBoss", style = MaterialTheme.typography.displayLarge)
-        Text("1 device = 1 lisensi Rp1.000.000. Kirim Device ID ke penjual, masukkan kode aktivasi di bawah.", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
+        Text("1 device = 1 lisensi Rp1.000.000. Kirim Device ID ke penjual, masukkan kode aktivasi di bawah.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
         PremiumCard {
             Text("Device ID", fontWeight = FontWeight.Bold)
             Text(deviceId, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Bata)
@@ -105,11 +105,11 @@ fun LoginScreen(onLogin: (String) -> Unit) {
     var pin by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
     val ctx = LocalContext.current
-    Column(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(Modifier.height(24.dp))
         Text("🍲", fontSize = 56.sp)
         Text("Selamat Datang", style = MaterialTheme.typography.displayLarge)
-        Text("Masukkan PIN untuk masuk kasir.", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
+        Text("Masukkan PIN untuk masuk kasir.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
         Text(if (pin.isEmpty()) "••••" else pin.map { "•" }.joinToString(""), fontSize = 30.sp, fontWeight = FontWeight.Bold, letterSpacing = 8.sp)
         if (error.isNotBlank()) Text(error, color = Bata)
         val keys = listOf("1","2","3","4","5","6","7","8","9","C","0","⌫")

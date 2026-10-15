@@ -87,9 +87,12 @@ fun DashboardScreen(vm: MainViewModel, onNav: (String) -> Unit) {
             PremiumCard(modifier = Modifier.weight(1f)) { Text("Total Menu", fontWeight = FontWeight.Bold); Text("${menu.size}", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold) }
         }
         SectionTitle("Menu Cepat")
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-            listOf("Kasir" to "kasir", "Pesanan" to "pesanan", "Stok" to "stok", "Laporan" to "laporan", "Menu" to "menu", "Pengaturan" to "pengaturan").forEach { (label, route) ->
-                Button(onClick = { onNav(route) }, colors = ButtonDefaults.buttonColors(containerColor = Bata), shape = RoundedCornerShape(16.dp)) { Text(label) }
+        listOf("Kasir" to "kasir", "Pesanan" to "pesanan", "Stok" to "stok", "Laporan" to "laporan", "Menu" to "menu", "Pengaturan" to "pengaturan").chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { (label, route) ->
+                    Button(onClick = { onNav(route) }, colors = ButtonDefaults.buttonColors(containerColor = Bata), shape = RoundedCornerShape(16.dp), modifier = Modifier.weight(1f).height(52.dp)) { Text(label, fontSize = 15.sp) }
+                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
         SectionTitle("Pesanan Terbaru")
@@ -121,10 +124,11 @@ fun CashierScreen(vm: MainViewModel, onCheckout: () -> Unit, onReceipt: () -> Un
     val cart by vm.cart.collectAsState()
     val stock by vm.stock.collectAsState()
     var cat by remember { mutableStateOf("Semua") }
-    val cats = listOf("Semua", "Bakso", "Mie Ayam", "Minuman", "Tambahan")
-    val filtered = menu.filter { (cat == "Semua" || it.category == cat) && it.visible }
+    val cats = remember(menu) { listOf("Semua") + menu.filter { it.visible }.map { it.category }.filter { it.isNotBlank() }.distinct().sorted() }
+    val activeCat = if (cat != "Semua" && !cats.contains(cat)) "Semua" else cat
+    val filtered = menu.filter { (activeCat == "Semua" || it.category == activeCat) && it.visible }
     val low = stock.filter { it.quantity <= it.minQty }
-    Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         if (low.isNotEmpty()) {
             Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3C4)), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
                 Text("⚠️ Stok menipis: " + low.joinToString(", ") { it.name }, modifier = Modifier.padding(10.dp), fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -158,9 +162,9 @@ fun CashierScreen(vm: MainViewModel, onCheckout: () -> Unit, onReceipt: () -> Un
         if (cart.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
             Card(colors = CardDefaults.cardColors(containerColor = Bata), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().clickable { onCheckout() }) {
-                Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("${cart.sumOf { it.qty }} item  •  ${formatRupiah(vm.cartTotal())}", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
-                    Text("BAYAR →", color = Color.White, fontWeight = FontWeight.Bold)
+                Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(formatRupiah(vm.cartTotal()), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
+                    Text("${cart.sumOf { it.qty }} item  •  BAYAR →", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
             }
         }
@@ -251,7 +255,7 @@ fun OrdersScreen(vm: MainViewModel) {
     val orders by vm.orders.collectAsState()
     val active = orders.filter { it.status != "SELESAI" }
     var showDialog by remember { mutableStateOf<OrderEntity?>(null) }
-    Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         SectionTitle("Pesanan & Dapur", "Tap kartu untuk pindah status")
         if (active.isEmpty()) EmptyState("👨‍🍳", "Dapur kosong", "Order baru dari Kasir akan muncul di sini.")
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -1,16 +1,105 @@
 package com.daftech.warungboss.util
 
+import android.bluetooth.BluetoothManager
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
 import com.daftech.warungboss.data.OrderEntity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.util.UUID
 
 /**
- * ESC/POS 58mm helper. Aman tanpa printer: bila tidak ada printer terhubung,
- * tampilkan preview struk (caller) + toast. Tidak crash.
- * Implementasi Bluetooth: kirim byte ESC/POS ke printer yang sudah dipairing
- * bila ada; fallback selalu ke preview.
+ * ESC/POS 58mm helper + Bluetooth SPP printing.
+ * Aman: semua SecurityException / bluetooth error ditangkap jadi toast, tidak crash.
  */
 object PrinterHelper {
+    private const val PREFS = "warungboss_shop"
+    private const val KEY_MAC = "printer_mac"
+    private val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
+
+    data class BtDevice(val name: String, val address: String)
+
+    fun getMac(context: Context): String =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_MAC, "") ?: ""
+
+    fun saveMac(context: Context, mac: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_MAC, mac).apply()
+    }
+
+    /** Daftar perangkat Bluetooth yang sudah di-pairing. Kosong bila bluetooth mati / tanpa izin. */
+    fun bondedDevices(context: Context): List<BtDevice> {
+        return try {
+            val mgr = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+                ?: return emptyList()
+            val adapter = mgr.adapter ?: return emptyList()
+            if (!adapter.isEnabled) return emptyList()
+            adapter.bondedDevices
+                .map { BtDevice(it.name ?: "Tanpa nama", it.address) }
+                .sortedBy { it.name.lowercase() }
+        } catch (e: SecurityException) {
+            emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /** Kirim byte ESC/POS via Bluetooth SPP (thread IO). onResult dipanggil di main thread. */
+    fun sendBytes(context: Context, mac: String, data: ByteArray, onResult: (Boolean, String) -> Unit) {
+        CoroutineScope(Dispatchers.IO).launch {
+            var ok = false
+            var msg: String
+            try {
+                val mgr = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+                val adapter = mgr.adapter ?: throw IllegalStateException("Bluetooth tidak tersedia di HP ini")
+                if (!adapter.isEnabled) throw IllegalStateException("Bluetooth HP mati — nyalakan dulu")
+                val device = adapter.getRemoteDevice(mac)
+                val socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
+                try {
+                    adapter.cancelDiscovery()
+                    socket.connect()
+                    val out = socket.outputStream
+                    out.write(data)
+                    out.flush()
+                    try { Thread.sleep(400) } catch (_: InterruptedException) { }
+                    ok = true
+                    msg = "Terkirim ke printer"
+                } finally {
+                    try { socket.close() } catch (_: Exception) { }
+                }
+            } catch (e: SecurityException) {
+                msg = "Gagal: izin Bluetooth ditolak"
+            } catch (e: IllegalArgumentException) {
+                msg = "Gagal: alamat printer tidak valid"
+            } catch (e: Exception) {
+                msg = "Gagal: ${e.message ?: "tidak diketahui"}"
+            }
+            val result = msg
+            Handler(Looper.getMainLooper()).post { onResult(ok, result) }
+        }
+    }
+
+    fun buildTestEscPos(): ByteArray {
+        val esc = 0x1B.toByte()
+        val out = mutableListOf<Byte>()
+        fun add(vararg b: Byte) { out.addAll(b.toList()) }
+        fun text(s: String) { out.addAll(s.toByteArray(Charsets.UTF_8).toList()); out.add(0x0A) }
+        add(esc, 0x40) // init
+        add(esc, 0x61, 0x01) // center
+        add(esc, 0x21, 0x10) // double height
+        text("TES CETAK")
+        add(esc, 0x21, 0x00)
+        text("WarungBoss")
+        text("${formatDate(System.currentTimeMillis())} ${formatTime(System.currentTimeMillis())}")
+        text("--------------------------------")
+        text("Printer Bluetooth OK")
+        text("apk by DAFTECH")
+        add(esc, 0x61, 0x00)
+        return out.toByteArray()
+    }
+
     fun buildReceiptText(shopName: String, shopAddress: String, order: OrderEntity, itemsLabel: String): String {
         val sb = StringBuilder()
         sb.appendLine("        $shopName")
@@ -66,9 +155,19 @@ object PrinterHelper {
         return out.toByteArray()
     }
 
-    fun printOrToast(context: Context, escPos: ByteArray) {
-        // v1: Bluetooth printing via printer ter-pairing dilakukan di layer Settings (pilih printer).
-        // Di sini stub aman: beri tahu user bahwa struk siap & preview ditampilkan.
-        Toast.makeText(context, "Struk siap. Hubungkan printer Bluetooth 58mm di Pengaturan untuk print.", Toast.LENGTH_LONG).show()
+    /**
+     * Kirim struk ke printer bila MAC tersimpan; toast bila belum ada printer.
+     * return true = percobaan kirim dimulai, false = tidak ada printer (toast ditampilkan).
+     */
+    fun printOrToast(context: Context, escPos: ByteArray): Boolean {
+        val mac = getMac(context)
+        if (mac.isBlank()) {
+            Toast.makeText(context, "Struk siap. Hubungkan printer di Pengaturan.", Toast.LENGTH_LONG).show()
+            return false
+        }
+        sendBytes(context, mac, escPos) { ok, msg ->
+            Toast.makeText(context, msg, if (ok) Toast.LENGTH_SHORT else Toast.LENGTH_LONG).show()
+        }
+        return true
     }
 }
